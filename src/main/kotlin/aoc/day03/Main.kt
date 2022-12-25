@@ -17,11 +17,19 @@ fun part1(input: List<String>): Int {
     }
 }
 
+private const val GROUP_SIZE = 3
+
 fun part2(input: List<String>): Int {
-    return input.size
+    return input.chunked(GROUP_SIZE).sumOf { lines ->
+        lines.map { it.toSet() }
+            .reduce { l, r -> l.intersect(r) }
+            .also { check(it.size == 1) }
+            .first().priorityValue()
+    }
 }
 
-const val TEST_OUTPUT = 157
+private const val TEST_OUTPUT = 157
+private const val TEST_OUTPUT_2 = 70
 
 fun main() {
     // test if implementation meets criteria from the description, like:
@@ -29,6 +37,9 @@ fun main() {
     val testOutput = part1(testInput)
 //    println(testOutput)
     check(testOutput == TEST_OUTPUT)
+    val testOutput2 = part2(testInput)
+    println(testOutput2)
+    check(testOutput2 == TEST_OUTPUT_2)
 
     val input = readInput("Day03")
     println(part1(input))
