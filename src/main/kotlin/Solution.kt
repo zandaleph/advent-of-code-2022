@@ -1,10 +1,4 @@
-interface Solution {
-    val part1: SolutionPart
-        get() {
-            return SolutionPart()
-        }
-    val part2: SolutionPart
-        get() {
-            return SolutionPart()
-        }
+interface Solution<T> {
+    val part1: SolutionPart<T>
+    val part2: SolutionPart<T>
 }

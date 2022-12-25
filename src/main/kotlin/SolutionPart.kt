@@ -1,4 +1,4 @@
-class SolutionPart(
-    val testOutput: Int? = null,
-    val compute: (input: List<String>) -> Int = { it.size },
+class SolutionPart<T>(
+    val testOutput: T? = null,
+    val compute: (input: List<String>) -> T,
 )

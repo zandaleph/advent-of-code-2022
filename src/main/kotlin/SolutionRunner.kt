@@ -1,7 +1,7 @@
 import kotlin.reflect.full.createInstance
 import kotlin.streams.toList
 
-class SolutionRunner(private val solution: Solution, private val debug: Boolean = false) {
+class SolutionRunner<T>(private val solution: Solution<T>, private val debug: Boolean = false) {
 
     fun run() {
         bothParts("_test") { output, part ->
@@ -13,7 +13,7 @@ class SolutionRunner(private val solution: Solution, private val debug: Boolean 
         }
     }
 
-    private fun bothParts(suffix: String? = null, block: (output: Int, part: SolutionPart) -> Unit) {
+    private fun bothParts(suffix: String? = null, block: (output: T, part: SolutionPart<T>) -> Unit) {
         val input = checkNotNull(
             solution.javaClass.getResourceAsStream("${solution.javaClass.simpleName}${suffix ?: ""}.txt"),
         ).bufferedReader().lines().toList()
@@ -22,6 +22,6 @@ class SolutionRunner(private val solution: Solution, private val debug: Boolean 
     }
 }
 
-inline fun <reified T : Solution> solutionMain(debug: Boolean = false) {
+inline fun <reified T : Solution<*>> solutionMain(debug: Boolean = false) {
     SolutionRunner(T::class.createInstance(), debug).run()
 }

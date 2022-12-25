@@ -1,7 +1,7 @@
 import java.util.PriorityQueue
 import kotlin.math.max
 
-class Day01 : Solution {
+class Day01 : Solution<Int> {
     companion object {
         private const val TEST_OUTPUT = 24000
     }

@@ -1,4 +1,4 @@
-class Day03 : Solution {
+class Day03 : Solution<Int> {
 
     companion object {
         private const val TEST_OUTPUT = 157
