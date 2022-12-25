@@ -2,8 +2,12 @@ class Day07 : Solution<Int> {
 
     companion object {
         private const val TEST_OUTPUT = 95437
+        private const val TEST_OUTPUT_2 = 24933642
 
         private const val MAX_SIZE = 100000
+        private const val TOTAL_SIZE = 70000000
+        private const val MIN_FREE_SIZE = 30000000
+
         private const val CMD_CD_ROOT = "$ cd /"
         private const val CMD_CD_UP = "$ cd .."
         private const val CMD_CD = "$ cd "
@@ -29,25 +33,24 @@ class Day07 : Solution<Int> {
     ) : FileSystemEntry {
         override val size = children.values.sumOf { it.size }
 
-        fun forEach(block: (FileSystemEntry) -> Unit) {
-            block(this)
+        fun depthFirst(): Sequence<FileSystemEntry> = sequence {
+            yield(this@Dir)
             children.forEach { (_, v) ->
                 when (v) {
-                    is Dir -> v.forEach(block)
-                    is File -> block(v)
+                    is Dir -> yieldAll(v.depthFirst())
+                    is File -> yield(v)
                 }
             }
         }
     }
 
-    private data class Part1State(
+    private data class ParseState(
         val dirs: Map<String, Dir> = mapOf("/" to Dir("/", "")),
         val curDir: String = "/",
     )
 
-    override val part1 = SolutionPart(TEST_OUTPUT) { lines ->
-        var sum = 0
-        lines.fold(Part1State()) { state, line ->
+    private fun parseLines(lines: List<String>): Dir =
+        lines.fold(ParseState()) { state, line ->
             when {
                 line.startsWith(CMD_LS) -> state
                 line.startsWith(CMD_CD_ROOT) -> state.copy(curDir = "/")
@@ -76,15 +79,25 @@ class Day07 : Solution<Int> {
                     state.copy(dirs = state.dirs + updatedDirs)
                 }
             }
-        }.dirs["/"]?.forEach {
-            if (it is Dir && it.size <= MAX_SIZE) {
-                sum += it.size
-            }
-        }
-        sum
+        }.dirs["/"]!!
+
+    override val part1 = SolutionPart(TEST_OUTPUT) { lines ->
+        parseLines(lines)
+            .depthFirst()
+            .filterIsInstance<Dir>()
+            .filter { it.size <= MAX_SIZE }
+            .sumOf { it.size }
     }
 
-    override val part2 = SolutionPart { 0 }
+    override val part2 = SolutionPart(TEST_OUTPUT_2) { lines ->
+        parseLines(lines).let { rootDir ->
+            val spaceToFree = MIN_FREE_SIZE - (TOTAL_SIZE - rootDir.size)
+            rootDir.depthFirst()
+                .filterIsInstance<Dir>()
+                .filter { it.size > spaceToFree }
+                .minOf { it.size }
+        }
+    }
 }
 
 fun main() = solutionMain<Day07>(true)
