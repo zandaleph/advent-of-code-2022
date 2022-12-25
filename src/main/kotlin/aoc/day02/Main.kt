@@ -34,18 +34,34 @@ fun part1(input: List<String>): Int {
     }
 }
 
+fun scoreResult(result: String) = (result[0] - 'X') * OUTCOME_MULTIPLIER
+
+fun playForResult(opp: String, result: String): String {
+    val oppValue = opp[0] - 'A'
+    val resultValue = result[0] - 'Y' // draws at 0, loss at -1, win at +1
+    val meValue = 'X' + ((oppValue + resultValue + NUM_SYMBOLS) % NUM_SYMBOLS)
+    return meValue.toString()
+}
+
 fun part2(input: List<String>): Int {
-    return input.size
+    return input.sumOf { line ->
+        val (opp, result) = line.split(' ')
+        (scoreResult(result) + playValue(playForResult(opp, result)))
+    }
 }
 
 const val TEST_OUTPUT = 15
+const val TEST_OUTPUT_2 = 12
 
 fun main() {
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day02_test")
     val testOutput = part1(testInput)
-    println(testOutput)
+    // println(testOutput)
     check(testOutput == TEST_OUTPUT)
+    val testOutput2 = part2(testInput)
+    println(testOutput2)
+    check(testOutput2 == TEST_OUTPUT_2)
 
     val input = readInput("Day02")
     println(part1(input))
