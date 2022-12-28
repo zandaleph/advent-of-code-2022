@@ -11,8 +11,8 @@ class Day09 : Solution<Int> {
     }
 
     private data class RopeState(
-        val rope: List<Pair<Int, Int>>,
-        val visited: Set<Pair<Int, Int>> = setOf(rope.last()),
+        val rope: List<Coord>,
+        val visited: Set<Coord> = setOf(rope.last()),
     ) {
         companion object {
             fun ofLength(len: Int) = RopeState(List(len) { 0 to 0 })
@@ -21,10 +21,10 @@ class Day09 : Solution<Int> {
         fun move(heading: String): RopeState {
             val head = rope.first()
             val newHead = when (heading) {
-                "L" -> head.copy(second = head.second - 1)
-                "R" -> head.copy(second = head.second + 1)
-                "D" -> head.copy(first = head.first - 1)
-                "U" -> head.copy(first = head.first + 1)
+                "L" -> head.copy(col = head.col - 1)
+                "R" -> head.copy(col = head.col + 1)
+                "D" -> head.copy(row = head.row - 1)
+                "U" -> head.copy(row = head.row + 1)
                 else -> error("Invalid heading: $heading")
             }
             val newRope = mutableListOf(newHead)
@@ -34,11 +34,11 @@ class Day09 : Solution<Int> {
             return copy(rope = newRope, visited = visited + newRope.last())
         }
 
-        private fun updateTail(head: Pair<Int, Int>, tail: Pair<Int, Int>): Pair<Int, Int> {
-            val rowDiff = head.first - tail.first
-            val colDiff = head.second - tail.second
+        private fun updateTail(head: Coord, tail: Coord): Coord {
+            val rowDiff = head.row - tail.row
+            val colDiff = head.col - tail.col
             return if (abs(rowDiff) > 1 || abs(colDiff) > 1) {
-                (tail.first + rowDiff.direction()) to (tail.second + colDiff.direction())
+                (tail.row + rowDiff.direction()) to (tail.col + colDiff.direction())
             } else tail
         }
 

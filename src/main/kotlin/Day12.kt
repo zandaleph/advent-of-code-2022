@@ -1,8 +1,6 @@
 import java.util.LinkedList
 import java.util.Queue
 
-typealias Coord = Pair<Int, Int>
-
 class Day12 : Solution<Int> {
 
     companion object {
@@ -10,34 +8,8 @@ class Day12 : Solution<Int> {
         private const val TEST_OUTPUT_2 = 29
     }
 
-    private operator fun <T> List<List<T>>.get(coord: Coord): T? =
-        this[coord.first][coord.second]
-
-    private operator fun MutableList<MutableList<Int?>>.set(coord: Coord, value: Int?) {
-        this[coord.first][coord.second] = value
-    }
-
-    private fun <T> List<List<T>>.findAll(t: T): List<Coord> =
-        flatMapIndexed { row, line ->
-            line.mapIndexedNotNull { col, v ->
-                if (v == t) row to col else null
-            }
-        }
-
-    private fun <T> List<T>.only(): T = this.also { check(it.size == 1) }.first()
-
-    private fun Coord.neighbors(numRows: Int, numCols: Int): List<Coord> =
-        mutableListOf<Coord>().also { result ->
-            (first - 1).let { if (it >= 0) result.add(copy(first = it)) }
-            (first + 1).let { if (it < numRows) result.add(copy(first = it)) }
-            (second - 1).let { if (it >= 0) result.add(copy(second = it)) }
-            (second + 1).let { if (it < numCols) result.add(copy(second = it)) }
-        }
-
     private fun chartTerrain(terrain: List<List<Char>>): List<List<Int?>> {
-        val numRows = terrain.size
-        val numCols = terrain.first().size
-        check(terrain.all { it.size == numCols })
+        val (numRows, numCols) = terrain.gridSize()
         val end = terrain.findAll('E').only()
 
         val pathState: MutableList<MutableList<Int?>> = MutableList(numRows) { MutableList(numCols) { null } }

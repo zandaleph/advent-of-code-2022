@@ -13,9 +13,7 @@ class Day03 : Solution<Int> {
             val half = line.length / 2
             val firstHalf = line.subSequence(0, half).toSet()
             val secondHalf = line.subSequence(half, line.length).toSet()
-            firstHalf.intersect(secondHalf).also {
-                check(it.size == 1)
-            }.first().priorityValue()
+            firstHalf.intersect(secondHalf).only().priorityValue()
         }
     }
 
@@ -23,8 +21,7 @@ class Day03 : Solution<Int> {
         input.chunked(GROUP_SIZE).sumOf { lines ->
             lines.map { it.toSet() }
                 .reduce { l, r -> l.intersect(r) }
-                .also { check(it.size == 1) }
-                .first().priorityValue()
+                .only().priorityValue()
         }
     }
 
