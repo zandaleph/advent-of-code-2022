@@ -8,43 +8,45 @@ class Day11 : Solution<Int> {
 
         private const val WORRY_RELIEF = 3
 
-        private fun regexGroup(id: String, pattern: String) = "(?<$id>$pattern)"
-
-        private const val MONKEY_ID_LINE = 0
-        private const val MONKEY_ID_ID = "id"
-        private val MONKEY_ID_GROUP = regexGroup(MONKEY_ID_ID, "\\d+")
-        private val MONKEY_ID_REGEX = Regex("Monkey $MONKEY_ID_GROUP:")
-
-        private const val STARTING_ITEMS_LINE = 1
-        private const val STARTING_ITEMS_ID = "items"
-        private val STARTING_ITEMS_GROUP = regexGroup(STARTING_ITEMS_ID, "\\d+(, \\d+)*")
-        private val STARTING_ITEMS_REGEX = Regex("  Starting items: $STARTING_ITEMS_GROUP")
-
-        private const val OPERATION_LINE = 2
-        private const val OPERATION_LHS_ID = "lhs"
-        private val OPERATION_LHS_GROUP = regexGroup(OPERATION_LHS_ID, "\\d+|(old)")
-        private const val OPERATION_OP_ID = "op"
-        private val OPERATION_OP_GROUP = regexGroup(OPERATION_OP_ID, "\\+|\\*")
-        private const val OPERATION_RHS_ID = "rhs"
-        private val OPERATION_RHS_GROUP = regexGroup(OPERATION_RHS_ID, "\\d+|(old)")
-        private val OPERATION_REGEX =
-            Regex("  Operation: new = $OPERATION_LHS_GROUP $OPERATION_OP_GROUP $OPERATION_RHS_GROUP")
-
-        private const val TEST_DIVISOR_LINE = 3
-        private const val TEST_DIVISOR_ID = "divisor"
-        private val TEST_DIVISOR_GROUP = regexGroup(TEST_DIVISOR_ID, "\\d+")
-        private val TEST_DIVISOR_REGEX = Regex("  Test: divisible by $TEST_DIVISOR_GROUP")
-
-        private const val BRANCH_TRUE_LINE = 4
-        private const val BRANCH_FALSE_LINE = 5
-        private const val BRANCH_VALUE_ID = "value"
-        private val BRANCH_VALUE_GROUP = regexGroup(BRANCH_VALUE_ID, "(true)|(false)")
-        private const val BRANCH_DEST_ID = "dest"
-        private val BRANCH_DEST_GROUP = regexGroup(BRANCH_DEST_ID, "\\d+")
-        private val BRANCH_REGEX = Regex("    If $BRANCH_VALUE_GROUP: throw to monkey $BRANCH_DEST_GROUP")
-
         private const val MONKEY_DESCRIPTION_LINES = 7
         private const val MONKEY_ROUNDS = 20
+    }
+
+    object MonkeyIdParser : Parser() {
+        const val LINE = 0
+        val ID = ParserField("\\d+") { MonkeyId(toInt()) }
+        override val pattern = "Monkey ${field(ID)}:"
+    }
+
+    object StartingItemsParser : Parser() {
+        const val LINE = 1
+        val ITEMS = ParserField("\\d+(, \\d+)*") { split(", ").map { it.toInt() } }
+        override val pattern = "  Starting items: ${field(ITEMS)}"
+    }
+
+    object OperationParser : Parser() {
+        const val LINE = 2
+        private fun String.parseOperand() =
+            if (this == "old") MonkeyMathWorryOperand else MonkeyMathValueOperand(toInt())
+
+        val OPERATOR = ParserField("\\+|\\*") { if (this == "+") MonkeyMathOp.ADD else MonkeyMathOp.MULTIPLY }
+        val OP_LHS = ParserField("\\d+|(old)") { parseOperand() }
+        val OP_RHS = ParserField("\\d+|(old)") { parseOperand() }
+
+        override val pattern = "  Operation: new = ${field(OP_LHS)} ${field(OPERATOR)} ${field(OP_RHS)}"
+    }
+
+    object TestDivisorParser : Parser() {
+        const val LINE = 3
+        val DIVISOR = ParserField("\\d+") { toInt() }
+        override val pattern = "  Test: divisible by ${field(DIVISOR)}"
+    }
+
+    object BranchParser : Parser() {
+        const val TRUE_LINE = 4
+        const val FALSE_LINE = 5
+        val DEST = ParserField("\\d+") { MonkeyId(toInt()) }
+        override val pattern = "    If (true|false): throw to monkey ${field(DEST)}"
     }
 
     @JvmInline
@@ -127,42 +129,14 @@ class Day11 : Solution<Int> {
 
     override val part1 = SolutionPart(TEST_OUTPUT) { lines ->
         val monkeys = lines.chunked(MONKEY_DESCRIPTION_LINES).map { chunk ->
-            val matchResult = MONKEY_ID_REGEX.find(chunk[MONKEY_ID_LINE])
-            val id = MonkeyId(checkNotNull(matchResult?.groups?.get(MONKEY_ID_ID)).value.toInt())
-            val startingItems = checkNotNull(
-                STARTING_ITEMS_REGEX.find(chunk[STARTING_ITEMS_LINE])?.groups?.get(STARTING_ITEMS_ID),
-            ).value.split(", ").map { it.toInt() }
-            val operationGroups = checkNotNull(OPERATION_REGEX.find(chunk[OPERATION_LINE])?.groups)
-            val opLhs = checkNotNull(
-                operationGroups[OPERATION_LHS_ID]?.value?.let {
-                    if (it == "old") MonkeyMathWorryOperand else MonkeyMathValueOperand(it.toInt())
-                },
-            )
-            val opOp = checkNotNull(
-                operationGroups[OPERATION_OP_ID]?.value?.let {
-                    if (it == "+") MonkeyMathOp.ADD else MonkeyMathOp.MULTIPLY
-                },
-            )
-            val opRhs = checkNotNull(
-                operationGroups[OPERATION_RHS_ID]?.value?.let {
-                    if (it == "old") MonkeyMathWorryOperand else MonkeyMathValueOperand(it.toInt())
-                },
-            )
-            val operation = MonkeyMath(opOp, opLhs, opRhs)
-            val testDivisor = checkNotNull(
-                TEST_DIVISOR_REGEX.find(chunk[TEST_DIVISOR_LINE])?.groups?.get(TEST_DIVISOR_ID),
-            ).value.toInt()
-            val testTrueDest = MonkeyId(
-                checkNotNull(
-                    BRANCH_REGEX.find(chunk[BRANCH_TRUE_LINE])?.groups?.get(BRANCH_DEST_ID),
-                ).value.toInt(),
-            )
-            val testFalseDest = MonkeyId(
-                checkNotNull(
-                    BRANCH_REGEX.find(chunk[BRANCH_FALSE_LINE])?.groups?.get(BRANCH_DEST_ID),
-                ).value.toInt(),
-            )
-
+            val id = MonkeyIdParser.run { parse(chunk[LINE])[ID] }
+            val startingItems = StartingItemsParser.run { parse(chunk[LINE])[ITEMS] }
+            val operation = OperationParser.run {
+                parse(chunk[LINE]).let { MonkeyMath(it[OPERATOR], it[OP_LHS], it[OP_RHS]) }
+            }
+            val testDivisor = TestDivisorParser.run { parse(chunk[LINE])[DIVISOR] }
+            val testTrueDest = BranchParser.run { parse(chunk[TRUE_LINE])[DEST] }
+            val testFalseDest = BranchParser.run { parse(chunk[FALSE_LINE])[DEST] }
             Monkey(id, startingItems, operation, testDivisor, testTrueDest, testFalseDest)
         }
         val finalState = (1..MONKEY_ROUNDS).fold(JungleState.fromMonkeys(monkeys)) { state, _ -> state.round() }

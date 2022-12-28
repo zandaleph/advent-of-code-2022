@@ -5,10 +5,13 @@ class Day05 : Solution<String> {
         private const val TEST_OUTPUT_2 = "MCD"
 
         private const val CHUNK_SIZE = 4
-        private const val COUNT = "count"
-        private const val FROM = "from"
-        private const val TO = "to"
-        private val MOVE_REGEX = "move (?<$COUNT>:\\d+) from (?<$FROM>:\\d+) to (?<$TO>:\\d+)".toRegex()
+    }
+
+    object MoveParser : Parser() {
+        val COUNT = ParserField("\\d+") { toInt() }
+        val FROM = ParserField("\\d+") { toInt() }
+        val TO = ParserField("\\d+") { toInt() }
+        override val pattern = "move ${field(COUNT)} from ${field(FROM)} to ${field(TO)}"
     }
 
     private data class CraneState(
@@ -55,13 +58,11 @@ class Day05 : Solution<String> {
                 },
         )
         val finalState = lines.drop(diagramLines.size + 1).fold(initialState) { state, line ->
-            val result = checkNotNull(MOVE_REGEX.find(line)).groups
-            block(state, Triple(result.getInt(COUNT), result.getInt(FROM), result.getInt(TO)))
+            val triple = MoveParser.run { parse(line).let { Triple(it[COUNT], it[FROM], it[TO]) } }
+            block(state, triple)
         }
         return finalState.stacks.map { it.last() }.joinToString(separator = "")
     }
-
-    private fun MatchGroupCollection.getInt(name: String) = checkNotNull(get(name)).value.toInt()
 
     override val part1 = SolutionPart(TEST_OUTPUT) { lines ->
         parseAndFold(lines) { state, (count, from, to) ->
