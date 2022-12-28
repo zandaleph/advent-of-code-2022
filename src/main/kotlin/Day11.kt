@@ -1,15 +1,16 @@
 import java.util.SortedMap
 
-class Day11 : Solution<Int> {
+class Day11 : Solution<Long> {
 
     companion object {
-        private const val TEST_OUTPUT = 10605
-        private const val TEST_OUTPUT_2 = 0
+        private const val TEST_OUTPUT = 10605L
+        private const val TEST_OUTPUT_2 = 2713310158L
 
-        private const val WORRY_RELIEF = 3
+        private const val WORRY_RELIEF = 3L
 
         private const val MONKEY_DESCRIPTION_LINES = 7
         private const val MONKEY_ROUNDS = 20
+        private const val MONKEY_ROUNDS_2 = 10000
     }
 
     object MonkeyIdParser : Parser() {
@@ -20,14 +21,14 @@ class Day11 : Solution<Int> {
 
     object StartingItemsParser : Parser() {
         const val LINE = 1
-        val ITEMS = ParserField("\\d+(, \\d+)*") { split(", ").map { it.toInt() } }
+        val ITEMS = ParserField("\\d+(, \\d+)*") { split(", ").map { it.toLong() } }
         override val pattern = "  Starting items: ${field(ITEMS)}"
     }
 
     object OperationParser : Parser() {
         const val LINE = 2
         private fun String.parseOperand() =
-            if (this == "old") MonkeyMathWorryOperand else MonkeyMathValueOperand(toInt())
+            if (this == "old") MonkeyMathWorryOperand else MonkeyMathValueOperand(toLong())
 
         val OPERATOR = ParserField("\\+|\\*") { if (this == "+") MonkeyMathOp.ADD else MonkeyMathOp.MULTIPLY }
         val OP_LHS = ParserField("\\d+|(old)") { parseOperand() }
@@ -38,7 +39,7 @@ class Day11 : Solution<Int> {
 
     object TestDivisorParser : Parser() {
         const val LINE = 3
-        val DIVISOR = ParserField("\\d+") { toInt() }
+        val DIVISOR = ParserField("\\d+") { toLong() }
         override val pattern = "  Test: divisible by ${field(DIVISOR)}"
     }
 
@@ -54,21 +55,21 @@ class Day11 : Solution<Int> {
         override fun compareTo(other: MonkeyId) = id - other.id
     }
 
-    enum class MonkeyMathOp(val apply: (Int, Int) -> Int) {
-        ADD(Int::plus),
-        MULTIPLY(Int::times);
+    enum class MonkeyMathOp(val apply: (Long, Long) -> Long) {
+        ADD(Long::plus),
+        MULTIPLY(Long::times);
     }
 
     sealed interface MonkeyMathOperand {
-        fun value(worry: Int): Int
+        fun value(worry: Long): Long
     }
 
     object MonkeyMathWorryOperand : MonkeyMathOperand {
-        override fun value(worry: Int) = worry
+        override fun value(worry: Long) = worry
     }
 
-    data class MonkeyMathValueOperand(private val value: Int) : MonkeyMathOperand {
-        override fun value(worry: Int) = value
+    data class MonkeyMathValueOperand(private val value: Long) : MonkeyMathOperand {
+        override fun value(worry: Long) = value
     }
 
     data class MonkeyMath(
@@ -76,40 +77,42 @@ class Day11 : Solution<Int> {
         val lhs: MonkeyMathOperand,
         val rhs: MonkeyMathOperand,
     ) {
-        fun compute(worry: Int): Int {
+        fun compute(worry: Long): Long {
             return op.apply(lhs.value(worry), rhs.value(worry))
         }
     }
 
     data class Monkey(
         val id: MonkeyId,
-        val startingItems: List<Int>,
+        val startingItems: List<Long>,
         val operation: MonkeyMath,
-        val testDivisor: Int,
+        val testDivisor: Long,
         val testTrueDest: MonkeyId,
         val testFalseDest: MonkeyId,
+        val isWorryRelieved: Boolean = true,
     ) {
-        fun inspect(worry: Int): Pair<Int, MonkeyId> {
-            val newWorry = operation.compute(worry).floorDiv(WORRY_RELIEF)
-            val newMonkey = if (newWorry % testDivisor == 0) testTrueDest else testFalseDest
+        fun inspect(worry: Long): Pair<Long, MonkeyId> {
+            val newWorry = operation.compute(worry).let { if (isWorryRelieved) it / WORRY_RELIEF else it }
+            val newMonkey = if (newWorry % testDivisor == 0L) testTrueDest else testFalseDest
             return newWorry to newMonkey
         }
     }
 
     data class MonkeyState(
         val monkey: Monkey,
-        val heldItems: List<Int> = monkey.startingItems,
-        val inspections: Int = 0,
+        val heldItems: List<Long> = monkey.startingItems,
+        val inspections: Long = 0L,
     ) {
-        fun turn(): Pair<MonkeyState, Map<MonkeyId, List<Int>>> {
+        fun turn(totalDivisor: Long): Pair<MonkeyState, Map<MonkeyId, List<Long>>> {
             val newState = copy(heldItems = listOf(), inspections = inspections + heldItems.size)
-            val tosses = heldItems.map { monkey.inspect(it) }.groupBy({ it.second }) { it.first }
+            val tosses = heldItems.map { monkey.inspect(it) }.groupBy({ it.second }) { it.first % totalDivisor }
             return newState to tosses
         }
     }
 
     data class JungleState(
         val monkeys: SortedMap<MonkeyId, MonkeyState>,
+        val totalDivisor: Long = monkeys.values.map { it.monkey.testDivisor }.reduce { a, b -> a * b },
     ) {
         companion object {
             fun fromMonkeys(monkeys: List<Monkey>) =
@@ -118,7 +121,7 @@ class Day11 : Solution<Int> {
 
         fun round(): JungleState {
             return monkeys.keys.fold(this) { state, monkeyId ->
-                val (newMonkey, tosses) = state.monkeys[monkeyId]!!.turn()
+                val (newMonkey, tosses) = state.monkeys[monkeyId]!!.turn(totalDivisor)
                 val newMonkeys = (state.monkeys + (newMonkey.monkey.id to newMonkey)).mapValues { (id, curMonkey) ->
                     curMonkey.copy(heldItems = curMonkey.heldItems + (tosses[id] ?: listOf()))
                 }.toSortedMap()
@@ -127,8 +130,8 @@ class Day11 : Solution<Int> {
         }
     }
 
-    override val part1 = SolutionPart(TEST_OUTPUT) { lines ->
-        val monkeys = lines.chunked(MONKEY_DESCRIPTION_LINES).map { chunk ->
+    private fun parseMonkeys(lines: List<String>): List<Monkey> {
+        return lines.chunked(MONKEY_DESCRIPTION_LINES).map { chunk ->
             val id = MonkeyIdParser.run { parse(chunk[LINE])[ID] }
             val startingItems = StartingItemsParser.run { parse(chunk[LINE])[ITEMS] }
             val operation = OperationParser.run {
@@ -139,11 +142,19 @@ class Day11 : Solution<Int> {
             val testFalseDest = BranchParser.run { parse(chunk[FALSE_LINE])[DEST] }
             Monkey(id, startingItems, operation, testDivisor, testTrueDest, testFalseDest)
         }
-        val finalState = (1..MONKEY_ROUNDS).fold(JungleState.fromMonkeys(monkeys)) { state, _ -> state.round() }
-        finalState.monkeys.values.map { it.inspections }.sorted().takeLast(2).fold(1, Int::times)
     }
 
-    override val part2 = SolutionPart(TEST_OUTPUT_2) { 0 }
+    override val part1 = SolutionPart(TEST_OUTPUT) { lines ->
+        val monkeys = parseMonkeys(lines)
+        val finalState = (1..MONKEY_ROUNDS).fold(JungleState.fromMonkeys(monkeys)) { state, _ -> state.round() }
+        finalState.monkeys.values.map { it.inspections }.sorted().takeLast(2).reduce { a, b -> a * b }
+    }
+
+    override val part2 = SolutionPart(TEST_OUTPUT_2) { lines ->
+        val monkeys = parseMonkeys(lines).map { it.copy(isWorryRelieved = false) }
+        val finalState = (1..MONKEY_ROUNDS_2).fold(JungleState.fromMonkeys(monkeys)) { state, _ -> state.round() }
+        finalState.monkeys.values.map { it.inspections }.sorted().takeLast(2).reduce { a, b -> a * b }
+    }
 }
 
-fun main() = solutionMain<Day11>()
+fun main() = solutionMain<Day11>(true)
