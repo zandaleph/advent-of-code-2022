@@ -2,19 +2,25 @@ class Day13 : Solution<Int> {
 
     companion object {
         private const val TEST_OUTPUT = 13
+        private const val TEST_OUTPUT_2 = 140
 
         private const val CHUNK_SIZE = 3
+
+        private const val DIVISOR_1 = 2
+        private const val DIVISOR_2 = 6
     }
 
-    sealed interface Packet {
-        operator fun compareTo(other: Packet): Int
+    sealed interface Packet : Comparable<Packet> {
+        override operator fun compareTo(other: Packet): Int
     }
 
     data class ListPacket(val list: List<Packet> = listOf()) : Packet {
+        constructor(onlyItem: Packet) : this(listOf(onlyItem))
+
         override operator fun compareTo(other: Packet): Int =
             when (other) {
                 is ListPacket -> compareList(other)
-                is IntPacket -> this.compareTo(ListPacket(listOf(other)))
+                is IntPacket -> this.compareTo(ListPacket(other))
             }
 
         private fun compareList(other: ListPacket) =
@@ -22,14 +28,37 @@ class Day13 : Solution<Int> {
                 .map { (l, r) -> l.compareTo(r) }
                 .filter { it != 0 }
                 .firstOrNull() ?: list.size.compareTo(other.list.size)
+
+        override fun equals(other: Any?): Boolean {
+            return when (other) {
+                is ListPacket -> compareTo(other) == 0
+                else -> false
+            }
+        }
+
+        override fun hashCode(): Int {
+            return list.hashCode()
+        }
     }
 
     data class IntPacket(val value: Int) : Packet {
+
         override operator fun compareTo(other: Packet): Int =
             when (other) {
-                is ListPacket -> ListPacket(listOf(this)).compareTo(other)
+                is ListPacket -> ListPacket(this).compareTo(other)
                 is IntPacket -> value.compareTo(other.value)
             }
+
+        override fun equals(other: Any?): Boolean {
+            return when (other) {
+                is IntPacket -> compareTo(other) == 0
+                else -> false
+            }
+        }
+
+        override fun hashCode(): Int {
+            return value
+        }
     }
 
     // 0 = start item, 1 = start list, 2 = end list, 3 = mid-number
@@ -119,7 +148,17 @@ class Day13 : Solution<Int> {
             .sum()
     }
 
-    override val part2 = SolutionPart { 0 }
+    override val part2 = SolutionPart(TEST_OUTPUT_2) { lines ->
+        val firstDivider = ListPacket(ListPacket(IntPacket(DIVISOR_1)))
+        val secondDivider = ListPacket(ListPacket(IntPacket(DIVISOR_2)))
+        val sorted = lines.filter { it.isNotEmpty() }
+            .map { parsePacket(it) }
+            .let { it + firstDivider + secondDivider }
+            .sorted()
+        val firstIndex = sorted.indexOf(firstDivider) + 1
+        val secondIndex = sorted.indexOf(secondDivider) + 1
+        firstIndex * secondIndex
+    }
 }
 
 fun main() = solutionMain<Day13>()
