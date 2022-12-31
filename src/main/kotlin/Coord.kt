@@ -13,7 +13,7 @@ operator fun <T> List<List<T>>.get(coord: Coord): T? =
 
 operator fun List<String>.get(coord: Coord): Char = this[coord.row][coord.col]
 
-operator fun MutableList<MutableList<Int?>>.set(coord: Coord, value: Int?) {
+operator fun <T> MutableList<MutableList<T>>.set(coord: Coord, value: T) {
     this[coord.row][coord.col] = value
 }
 
